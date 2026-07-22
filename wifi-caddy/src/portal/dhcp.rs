@@ -53,6 +53,14 @@ pub async fn run(stack: Stack<'static>) {
     let dns = [AP_DNS_ADDRESS];
     let mut server_options = ServerOptions::new(AP_IP_ADDRESS, Some(&mut gw_buf));
     server_options.dns = &dns;
+    // DHCP option 114 (RFC 8910, Captive-Portal URI): tell the client outright that this network
+    // has a portal and where it is, rather than relying on it *inferring* one from a hijacked
+    // probe. On iOS the probe-and-redirect heuristic alone did not open the sign-in sheet; adding
+    // this did. Modern iOS/Android/macOS all honour it.
+    #[cfg(feature = "captive")]
+    {
+        server_options.captive_url = Some(AP_URL);
+    }
 
     let mut buf = [0; 1500];
     if let Err(_e) =

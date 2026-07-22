@@ -26,11 +26,13 @@ fn main() {
     let tcp_buf_size = env_or("WIFI_CADDY_TCP_BUF_SIZE", "2048");
     let http_buf_size = env_or("WIFI_CADDY_HTTP_BUF_SIZE", "4096");
     let keepalive_ms = env_or("WIFI_CADDY_KEEPALIVE_TIMEOUT_MS", "3000");
+    let socket_timeout_ms = env_or("WIFI_CADDY_SOCKET_TIMEOUT_MS", "10000");
 
     validate_usize("WIFI_CADDY_HANDLER_TASKS", &handler_tasks);
     validate_usize("WIFI_CADDY_TCP_BUF_SIZE", &tcp_buf_size);
     validate_usize("WIFI_CADDY_HTTP_BUF_SIZE", &http_buf_size);
     validate_u32("WIFI_CADDY_KEEPALIVE_TIMEOUT_MS", &keepalive_ms);
+    validate_u32("WIFI_CADDY_SOCKET_TIMEOUT_MS", &socket_timeout_ms);
 
     let out = std::path::Path::new(&std::env::var("OUT_DIR").unwrap()).join("server_tuning.rs");
 
@@ -48,6 +50,12 @@ fn main() {
              /// TCP keep-alive timeout in milliseconds.\n\
              /// Override with env var `WIFI_CADDY_KEEPALIVE_TIMEOUT_MS` (default 3000).\n\
              const KEEPALIVE_TIMEOUT_MS: u32 = {keepalive_ms};\n\
+             \n\
+             /// Read/write timeout applied to each accepted socket, in milliseconds.\n\
+             /// Without one, a client that vanishes mid-response holds its handler forever and\n\
+             /// the pool is permanently consumed. Override with env var\n\
+             /// `WIFI_CADDY_SOCKET_TIMEOUT_MS` (default 10000).\n\
+             const SOCKET_TIMEOUT_MS: u32 = {socket_timeout_ms};\n\
              \n\
              /// Number of concurrent HTTP handler tasks inside `Server::run`.\n\
              /// With `debug-server`, the debug server gets its own separate task.\n\

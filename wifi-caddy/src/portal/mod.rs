@@ -13,7 +13,7 @@ pub mod responses;
 use core::net::{Ipv4Addr, SocketAddr, SocketAddrV4};
 
 use edge_http::io::server::{Handler, Server};
-use edge_nal::TcpBind;
+use edge_nal::{TcpBind, WithTimeout};
 use edge_nal_embassy::{Tcp, TcpBuffers};
 use embassy_executor::Spawner;
 use embassy_net::Stack;
@@ -63,6 +63,19 @@ pub async fn serve_loop<H: Handler>(stack: Stack<'static>, handler: H) -> ! {
             }
         }
     };
+
+    // Give every accepted socket a read/write timeout.
+    //
+    // edge-http imposes none: its docs put per-request timeouts on the caller. Without one, a
+    // client that opens a connection and walks away — iOS does exactly this, with its captive
+    // "Hotspot Login" browser and repeated `hotspot-detect.html` probes — leaves a handler blocked
+    // forever writing to a peer that is gone. With only HANDLER_TASKS handlers the whole pool is
+    // consumed and the portal stops answering permanently: no crash, no log, just silence.
+    //
+    // This does NOT risk `run()` returning on an idle network: `WithTimeout` deliberately leaves
+    // `accept()` untimed ("while waiting potentially indefinitely for an incoming connection") and
+    // only hands back an already-wrapped socket.
+    let acceptor = WithTimeout::new(SOCKET_TIMEOUT_MS, acceptor);
 
     let mut server = Server::<{ HANDLER_TASKS }, { HTTP_BUF_SIZE }>::new();
     match server
