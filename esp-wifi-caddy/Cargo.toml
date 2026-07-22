@@ -54,14 +54,14 @@ embassy-net = { version = "0.9.0", features = [
     "dns",
 ] }
 
-esp-hal = { version = "1.1.0", features = ["unstable"] }
-esp-alloc = "0.10.0"
-esp-rtos = { version = "0.3.0", features = [
+esp-hal = { git = "https://github.com/esp-rs/esp-hal", rev = "fbd054ad96d73fccf5ce1b8a24f11bced95e0de4", features = ["unstable"] }
+esp-alloc = { git = "https://github.com/esp-rs/esp-hal", rev = "fbd054ad96d73fccf5ce1b8a24f11bced95e0de4" }
+esp-rtos = { git = "https://github.com/esp-rs/esp-hal", rev = "fbd054ad96d73fccf5ce1b8a24f11bced95e0de4", features = [
     "embassy",
     "esp-alloc",
     "esp-radio",
 ] }
-esp-radio = { version = "0.18.0", features = [
+esp-radio = { git = "https://github.com/esp-rs/esp-hal", rev = "fbd054ad96d73fccf5ce1b8a24f11bced95e0de4", features = [
     "wifi",
 ] }
 
@@ -79,6 +79,6 @@ sequential-storage = { version = "7.0.1", features = [
 embassy-embedded-hal = { version = "0.6.0", features = [
     "time",
 ] }
-esp-storage = { version = "0.9.0" }
+esp-storage = { git = "https://github.com/esp-rs/esp-hal", rev = "fbd054ad96d73fccf5ce1b8a24f11bced95e0de4", features = ["embedded-storage"] }
 
-esp-bootloader-esp-idf = { version = "0.5.0", default-features = false }
+esp-bootloader-esp-idf = { git = "https://github.com/esp-rs/esp-hal", rev = "fbd054ad96d73fccf5ce1b8a24f11bced95e0de4", default-features = false }
