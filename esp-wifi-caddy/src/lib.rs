@@ -260,6 +260,18 @@ async fn reconnect_timer(at: Option<Instant>) {
     }
 }
 
+/// Wait for a station disconnect, or never, when no station is configured.
+///
+/// `WifiController::wait_for_disconnect_async()` resolves immediately and repeatedly when there is
+/// no station to disconnect, so it must not be polled in AP-only or idle mode — see the call site.
+async fn disconnect_watcher(controller: &mut WifiController<'static>, armed: bool) {
+    if armed {
+        controller.wait_for_disconnect_async().await;
+    } else {
+        core::future::pending().await
+    }
+}
+
 struct WifiRunner {
     controller: WifiController<'static>,
     ap_up: bool,
@@ -411,9 +423,18 @@ impl WifiRunner {
         self.sync_state(false).await;
 
         loop {
+            // Only watch for disconnects when a station is actually configured.
+            //
+            // With no SSID — AP-only mode, and the idle state every caddy starts in —
+            // `wait_for_disconnect_async()` completes immediately and keeps completing, so this
+            // `select3` re-arms it in a tight loop. That is a hot spin on the executor: measured at
+            // ~600 iterations/second on an ESP32-S3, enough to starve the AP's own DHCP server, so
+            // clients associate to the config portal and then hang without ever getting a lease.
+            // The failure looks like a broken AP, which sends you hunting in entirely the wrong place.
+            let watch_disconnect = !self.ssid.is_empty();
             match select3(
                 self.wifi_commands.receive(),
-                self.controller.wait_for_disconnect_async(),
+                disconnect_watcher(&mut self.controller, watch_disconnect),
                 reconnect_timer(self.reconnect_at),
             )
             .await
