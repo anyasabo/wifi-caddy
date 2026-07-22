@@ -100,6 +100,14 @@ pub enum WifiCaddyCommand {
     APDown,
     /// Set STA credentials (ssid, pass) and enable STA.
     StaUp(WifiSsid, WifiPass),
+    /// Forget the STA credentials and stop trying to associate (AP-only or None).
+    ///
+    /// The counterpart to [`APDown`](Self::APDown), and necessary for a usable recovery AP: a
+    /// station that cannot join retries forever, and on a single radio each attempt drags the AP
+    /// onto the station's channel and re-scans. Clients then fail to associate with the AP with no
+    /// indication why — which is precisely the situation where someone needs the portal to fix the
+    /// credentials. Send this when giving up on a join, and `StaUp` again to resume.
+    StaDown,
 }
 
 impl core::fmt::Debug for WifiCaddyCommand {
@@ -107,6 +115,7 @@ impl core::fmt::Debug for WifiCaddyCommand {
         match self {
             Self::APUp(prefix) => f.debug_tuple("APUp").field(prefix).finish(),
             Self::APDown => f.write_str("APDown"),
+            Self::StaDown => f.write_str("StaDown"),
             Self::StaUp(ssid, pass) => f
                 .debug_tuple("StaUp")
                 .field(ssid)
@@ -122,6 +131,7 @@ impl defmt::Format for WifiCaddyCommand {
         match self {
             Self::APUp(prefix) => defmt::write!(f, "APUp({})", prefix.as_str()),
             Self::APDown => defmt::write!(f, "APDown"),
+            Self::StaDown => defmt::write!(f, "StaDown"),
             Self::StaUp(ssid, pass) => {
                 // defmt can take the Redact helper directly
                 defmt::write!(f, "StaUp({}, {})", ssid.as_str(), Redact(pass))
@@ -379,6 +389,15 @@ impl WifiRunner {
                 self.pass = new_pass;
                 self.reconnect_at = None;
                 false
+            }
+            WifiCaddyCommand::StaDown => {
+                info!("wifi: connection task: StaDown command");
+                self.ssid = WifiSsid::new();
+                self.pass = WifiPass::new();
+                // Cancel any pending retry, or the timer would fire into `try_connect_sta` after
+                // the mode has already dropped to AP-only.
+                self.reconnect_at = None;
+                true
             }
         }
     }
